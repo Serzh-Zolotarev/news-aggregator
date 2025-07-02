@@ -24,9 +24,8 @@ func (s *Store) Posts(n int) ([]storage.Post, error) {
 		n = 30
 	}
 	rows, err := s.db.Query(context.Background(), `
-	SELECT p.id, p.title, p.content, a.id, a.name, p.created_at 
-	FROM authors a, posts p
-	WHERE p.author_id = a.id
+	SELECT p.id, p.title, p.content, p.pub_time, p.link 
+	FROM posts p
 	LIMIT $1
 	`,
 		n,
@@ -45,9 +44,8 @@ func (s *Store) Posts(n int) ([]storage.Post, error) {
 			&p.ID,
 			&p.Title,
 			&p.Content,
-			&p.AuthorID,
-			&p.AuthorName,
-			&p.CreatedAt,
+			&p.PubTime,
+			&p.Link,
 		)
 		if err != nil {
 			return nil, err
@@ -65,13 +63,13 @@ func (s *Store) Posts(n int) ([]storage.Post, error) {
 
 func (s *Store) AddPost(p storage.Post) error {
 	_, err := s.db.Exec(context.Background(), ` 
-	INSERT INTO posts (title, content, author_id, created_at)
+	INSERT INTO posts (title, content, pub_time, link)
 	VALUES ($1, $2, $3, $4)
 	`,
 		p.Title,
 		p.Content,
-		p.AuthorID,
-		p.CreatedAt,
+		p.PubTime,
+		p.Link,
 	)
 
 	return err
@@ -89,14 +87,14 @@ func (s *Store) AddPosts(p []storage.Post) error {
 
 func (s *Store) UpdatePost(p storage.Post) error {
 	_, err := s.db.Exec(context.Background(), ` 
-	UPDATE posts (title, content, author_id, created_at)
-	SET  title = $1, content = $2, author_id = $3, created_at = $4
+	UPDATE posts
+	SET  title = $1, content = $2, pub_time = $3, link = $4
 	WHERE id = $5
 	`,
 		p.Title,
 		p.Content,
-		p.AuthorID,
-		p.CreatedAt,
+		p.PubTime,
+		p.Link,
 		p.ID,
 	)
 	return err

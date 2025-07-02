@@ -31,7 +31,7 @@ func TestDB_Posts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	allPosts, err := db.Posts(1)
+	allPosts, err := db.Posts(2)
 	if err != nil {
 		t.Fatal(err)
 	}

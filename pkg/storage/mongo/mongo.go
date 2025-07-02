@@ -77,11 +77,10 @@ func (s *Storage) UpdatePost(post storage.Post) error {
 	filter := bson.M{"id": post.ID}
 	update := bson.M{
 		"$set": bson.M{
-			"title":       post.Title,
-			"content":     post.Content,
-			"authorid":    post.AuthorID,
-			"createdat":   post.CreatedAt,
-			"publishedat": post.PublishedAt,
+			"title":   post.Title,
+			"content": post.Content,
+			"pubtime": post.PubTime,
+			"link":    post.Link,
 		},
 	}
 	_, err := db.UpdateOne(context.Background(), filter, update)

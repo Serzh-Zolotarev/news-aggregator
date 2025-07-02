@@ -1,14 +1,12 @@
 package storage
 
-// Post - публикация.
+// Публикация, получаемая из RSS.
 type Post struct {
-	ID          int
-	Title       string
-	Content     string
-	AuthorID    int
-	AuthorName  string
-	CreatedAt   int64
-	PublishedAt int64
+	ID      int    // номер записи
+	Title   string // заголовок публикации
+	Content string // содержание публикации
+	PubTime int64  // время публикации
+	Link    string // ссылка на источник
 }
 
 // Interface задаёт контракт на работу с БД.
