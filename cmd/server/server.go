@@ -6,11 +6,13 @@ import (
 	"log"
 	"net/http"
 	"news-aggregator/pkg/api"
+	"news-aggregator/pkg/rss"
 	"news-aggregator/pkg/storage"
 	"news-aggregator/pkg/storage/postgres"
+	"time"
 )
 
-type server struct {
+type server struct { // TODO
 	db  storage.Interface
 	api *api.API
 }
@@ -37,6 +39,40 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// каналы для новостей и ошибок
+	postsChan := make(chan []storage.Post)
+	errChan := make(chan error)
+
+	for _, url := range conf.URLS {
+		go func() {
+			for {
+				news, err := rss.Parse(url)
+				if err != nil {
+					errChan <- err
+					continue
+				}
+				postsChan <- news
+				time.Sleep(time.Minute * time.Duration(conf.Period))
+			}
+		}()
+	}
+
+	go func() {
+		for posts := range postsChan {
+			err := db.AddPosts(posts)
+			if err != nil {
+				errChan <- err
+				continue
+			}
+		}
+	}()
+
+	go func() {
+		for err := range errChan {
+			log.Println(err)
+		}
+	}()
 
 	apiDb := api.New(db)
 
