@@ -27,8 +27,8 @@ type Post struct {
 	Link        string `xml:"link"`
 }
 
-func Parse(url string) ([]storage.Post, error) {
-	resp, err := http.Get(url)
+func Parse(handler func(url string) (resp *http.Response, err error), url string) ([]storage.Post, error) {
+	resp, err := handler(url)
 	if err != nil {
 		return nil, err
 	}

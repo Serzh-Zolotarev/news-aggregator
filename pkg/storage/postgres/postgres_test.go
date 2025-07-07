@@ -15,7 +15,7 @@ func TestNew(t *testing.T) {
 	}
 }
 
-func TestDB_Posts(t *testing.T) {
+func TestStore_Posts(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	posts := []storage.Post{
 		{
@@ -36,4 +36,25 @@ func TestDB_Posts(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Logf("%+v", allPosts)
+}
+
+func TestStore_AddPosts(t *testing.T) {
+	tasks := []storage.Post{
+		{
+			Title:   "Post 1",
+			Content: "Some Content",
+		},
+		{
+			Title:   "Post 2",
+			Content: "Some Content",
+		},
+	}
+	db, err := New("postgres://postgres:postgres@localhost:5432/posts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = db.AddPosts(tasks)
+	if err != nil {
+		t.Fatal(err)
+	}
 }

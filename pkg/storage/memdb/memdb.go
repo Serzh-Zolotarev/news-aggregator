@@ -14,6 +14,9 @@ func (s *Store) Posts(n int) ([]storage.Post, error) {
 	return posts, nil
 }
 
+func (s *Store) AddPosts([]storage.Post) error {
+	return nil
+}
 func (s *Store) AddPost(storage.Post) error {
 	return nil
 }

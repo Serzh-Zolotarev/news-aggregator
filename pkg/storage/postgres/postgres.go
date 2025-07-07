@@ -26,6 +26,7 @@ func (s *Store) Posts(n int) ([]storage.Post, error) {
 	rows, err := s.db.Query(context.Background(), `
 	SELECT p.id, p.title, p.content, p.pub_time, p.link 
 	FROM posts p
+	ORDER BY id DESC 
 	LIMIT $1
 	`,
 		n,
@@ -59,6 +60,30 @@ func (s *Store) Posts(n int) ([]storage.Post, error) {
 	}
 
 	return posts, rows.Err()
+}
+
+func (s *Store) post(id int) (*storage.Post, error) {
+	row := s.db.QueryRow(context.Background(), `
+	SELECT p.id, p.title, p.content, p.pub_time, p.link 
+	FROM posts p
+	WHERE id=$1
+	`,
+		id,
+	)
+
+	post := &storage.Post{}
+	err := row.Scan(
+		&post.ID,
+		&post.Title,
+		&post.Content,
+		&post.PubTime,
+		&post.Link,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return post, nil
 }
 
 func (s *Store) AddPost(p storage.Post) error {

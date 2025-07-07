@@ -12,11 +12,6 @@ import (
 	"time"
 )
 
-type server struct { // TODO
-	db  storage.Interface
-	api *api.API
-}
-
 type config struct {
 	URLS       []string `json:"rss"`
 	Period     int      `json:"request_period"`
@@ -47,7 +42,7 @@ func main() {
 	for _, url := range conf.URLS {
 		go func() {
 			for {
-				news, err := rss.Parse(url)
+				news, err := rss.Parse(http.Get, url)
 				if err != nil {
 					errChan <- err
 					continue
