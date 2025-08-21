@@ -36,7 +36,7 @@ func main() {
 	}
 
 	// каналы для новостей и ошибок
-	postsChan := make(chan []storage.Post)
+	postsChan := make(chan []storage.NewsShortDetailed)
 	errChan := make(chan error)
 
 	for _, url := range conf.URLS {
@@ -71,7 +71,7 @@ func main() {
 
 	apiDb := api.New(db)
 
-	err = http.ListenAndServe(":80", apiDb.Router())
+	err = http.ListenAndServe(":8080", apiDb.Router())
 	if err != nil {
 		log.Fatal(err)
 	}
