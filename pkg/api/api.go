@@ -26,12 +26,14 @@ func New(db storage.Interface) *API {
 
 // Регистрация обработчиков API.
 func (a *API) endpoints() {
+	a.router.Use(requestIdMiddleware)
 	// получить новости
 	a.router.HandleFunc("/news", a.postsHandler).Methods(http.MethodGet, http.MethodOptions)
 	// получить n новость
 	a.router.HandleFunc("/news/{n}", a.postHandler).Methods(http.MethodGet, http.MethodOptions)
 	// веб-приложение
 	a.router.PathPrefix("/").Handler(http.StripPrefix("/", http.FileServer(http.Dir("./webapp"))))
+	a.router.Use(loggingMiddleware)
 }
 
 // Получение маршрутизатора запросов.
