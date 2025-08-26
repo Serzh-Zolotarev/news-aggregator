@@ -2,10 +2,13 @@ package postgres
 
 import (
 	"context"
+	"github.com/jackc/pgx/v4"
 	"news-aggregator/pkg/storage"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 )
+
+const maxNewsOnPage = 10
 
 type Store struct {
 	db *pgxpool.Pool
@@ -19,28 +22,71 @@ func New(dbURL string) (*Store, error) {
 	return &Store{db: db}, nil
 }
 
-func (s *Store) Posts(n int) ([]storage.Post, error) {
-	if n == 0 {
-		n = 30
+func (s *Store) Posts(page int, filter string) (*storage.NewsList, error) {
+	if page == 0 {
+		page = 1
 	}
-	rows, err := s.db.Query(context.Background(), `
+
+	var (
+		rows      pgx.Rows
+		countRows pgx.Row
+		err       error
+	)
+
+	offset := (page - 1) * maxNewsOnPage
+
+	if len(filter) != 0 {
+		rows, err = s.db.Query(context.Background(), `
+	SELECT p.id, p.title, p.content, p.pub_time, p.link 
+	FROM posts p
+	WHERE p.title iLIKE $1
+	ORDER BY id DESC
+	OFFSET $2
+	LIMIT $3
+	`,
+			"%"+filter+"%",
+			offset,
+			maxNewsOnPage,
+		)
+
+		countRows = s.db.QueryRow(context.Background(), `
+	SELECT COUNT(*) 
+	FROM posts p
+	WHERE p.title iLIKE $1
+	`,
+			"%"+filter+"%",
+		)
+	} else {
+		rows, err = s.db.Query(context.Background(), `
 	SELECT p.id, p.title, p.content, p.pub_time, p.link 
 	FROM posts p
 	ORDER BY id DESC 
-	LIMIT $1
+	OFFSET $1
+	LIMIT $2
 	`,
-		n,
-	)
+			offset,
+			maxNewsOnPage,
+		)
+
+		countRows = s.db.QueryRow(context.Background(), `SELECT COUNT(*) FROM posts`)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	var count int
+	err = countRows.Scan(&count)
 	if err != nil {
 		return nil, err
 	}
 
 	defer rows.Close()
 
-	var posts []storage.Post
+	var posts []storage.NewsShortDetailed
 
 	for rows.Next() {
-		var p storage.Post
+		var p storage.NewsShortDetailed
 		err = rows.Scan(
 			&p.ID,
 			&p.Title,
@@ -59,10 +105,17 @@ func (s *Store) Posts(n int) ([]storage.Post, error) {
 		return nil, err
 	}
 
-	return posts, rows.Err()
+	return &storage.NewsList{
+		Pagination: storage.Pagination{
+			Page:       page,
+			MaxPages:   count / maxNewsOnPage,
+			NewsOnPage: maxNewsOnPage,
+		},
+		News: posts,
+	}, rows.Err()
 }
 
-func (s *Store) post(id int) (*storage.Post, error) {
+func (s *Store) Post(id int) (*storage.NewsShortDetailed, error) {
 	row := s.db.QueryRow(context.Background(), `
 	SELECT p.id, p.title, p.content, p.pub_time, p.link 
 	FROM posts p
@@ -71,7 +124,7 @@ func (s *Store) post(id int) (*storage.Post, error) {
 		id,
 	)
 
-	post := &storage.Post{}
+	post := &storage.NewsShortDetailed{}
 	err := row.Scan(
 		&post.ID,
 		&post.Title,
@@ -86,7 +139,7 @@ func (s *Store) post(id int) (*storage.Post, error) {
 	return post, nil
 }
 
-func (s *Store) AddPost(p storage.Post) error {
+func (s *Store) AddPost(p storage.NewsShortDetailed) error {
 	_, err := s.db.Exec(context.Background(), ` 
 	INSERT INTO posts (title, content, pub_time, link)
 	VALUES ($1, $2, $3, $4)
@@ -100,7 +153,7 @@ func (s *Store) AddPost(p storage.Post) error {
 	return err
 }
 
-func (s *Store) AddPosts(p []storage.Post) error {
+func (s *Store) AddPosts(p []storage.NewsShortDetailed) error {
 	for _, post := range p {
 		err := s.AddPost(post)
 		if err != nil {
@@ -110,7 +163,7 @@ func (s *Store) AddPosts(p []storage.Post) error {
 	return nil
 }
 
-func (s *Store) UpdatePost(p storage.Post) error {
+func (s *Store) UpdatePost(p storage.NewsShortDetailed) error {
 	_, err := s.db.Exec(context.Background(), ` 
 	UPDATE posts
 	SET  title = $1, content = $2, pub_time = $3, link = $4
@@ -125,7 +178,7 @@ func (s *Store) UpdatePost(p storage.Post) error {
 	return err
 }
 
-func (s *Store) DeletePost(p storage.Post) error {
+func (s *Store) DeletePost(p storage.NewsShortDetailed) error {
 	_, err := s.db.Exec(context.Background(), `
     DELETE FROM posts 
 	WHERE id = $1

@@ -26,10 +26,14 @@ func New(db storage.Interface) *API {
 
 // Регистрация обработчиков API.
 func (a *API) endpoints() {
-	// получить n последних новостей
-	a.router.HandleFunc("/news/{n}", a.postsHandler).Methods(http.MethodGet, http.MethodOptions)
+	a.router.Use(requestIdMiddleware)
+	// получить новости
+	a.router.HandleFunc("/news", a.postsHandler).Methods(http.MethodGet, http.MethodOptions)
+	// получить n новость
+	a.router.HandleFunc("/news/{n}", a.postHandler).Methods(http.MethodGet, http.MethodOptions)
 	// веб-приложение
 	a.router.PathPrefix("/").Handler(http.StripPrefix("/", http.FileServer(http.Dir("./webapp"))))
+	a.router.Use(loggingMiddleware)
 }
 
 // Получение маршрутизатора запросов.
@@ -40,13 +44,39 @@ func (a *API) Router() *mux.Router {
 
 // Получение всех публикаций.
 func (a *API) postsHandler(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	s := query.Get("s")
+	page := query.Get("page")
+
+	p, err := strconv.Atoi(page)
+	if err != nil {
+		p = 1
+	}
+
+	posts, err := a.db.Posts(p, s)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	bytes, err := json.Marshal(posts)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write(bytes)
+}
+
+// Получение публикации
+func (a *API) postHandler(w http.ResponseWriter, r *http.Request) {
 	s := mux.Vars(r)["n"]
 	n, err := strconv.Atoi(s)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	posts, err := a.db.Posts(n)
+	posts, err := a.db.Post(n)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -56,12 +86,13 @@ func (a *API) postsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	w.WriteHeader(http.StatusOK)
 	w.Write(bytes)
 }
 
 // Добавление публикации.
 func (a *API) addPostHandler(w http.ResponseWriter, r *http.Request) {
-	var p storage.Post
+	var p storage.NewsShortDetailed
 	err := json.NewDecoder(r.Body).Decode(&p)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -77,7 +108,7 @@ func (a *API) addPostHandler(w http.ResponseWriter, r *http.Request) {
 
 // Обновление публикации.
 func (a *API) updatePostHandler(w http.ResponseWriter, r *http.Request) {
-	var p storage.Post
+	var p storage.NewsShortDetailed
 	err := json.NewDecoder(r.Body).Decode(&p)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -93,7 +124,7 @@ func (a *API) updatePostHandler(w http.ResponseWriter, r *http.Request) {
 
 // Удаление публикации.
 func (a *API) deletePostHandler(w http.ResponseWriter, r *http.Request) {
-	var p storage.Post
+	var p storage.NewsShortDetailed
 	err := json.NewDecoder(r.Body).Decode(&p)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
