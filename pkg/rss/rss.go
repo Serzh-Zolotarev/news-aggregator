@@ -27,7 +27,7 @@ type Post struct {
 	Link        string `xml:"link"`
 }
 
-func Parse(handler func(url string) (resp *http.Response, err error), url string) ([]storage.Post, error) {
+func Parse(handler func(url string) (resp *http.Response, err error), url string) ([]storage.NewsShortDetailed, error) {
 	resp, err := handler(url)
 	if err != nil {
 		return nil, err
@@ -42,9 +42,9 @@ func Parse(handler func(url string) (resp *http.Response, err error), url string
 		return nil, err
 	}
 
-	var data []storage.Post
+	var data []storage.NewsShortDetailed
 	for _, item := range xmlRes.Chanel.Posts {
-		var p storage.Post
+		var p storage.NewsShortDetailed
 		p.Title = item.Title
 		p.Content = item.Description
 		p.Content = strip.StripTags(p.Content)
